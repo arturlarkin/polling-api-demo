@@ -2,53 +2,70 @@ package com.example.polling_api_demo.utils;
 
 import com.example.polling_api_demo.entities.Poll;
 import com.example.polling_api_demo.entities.User;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import io.mailtrap.client.MailtrapClient;
+import io.mailtrap.config.MailtrapConfig;
+import io.mailtrap.factory.MailtrapClientFactory;
+import io.mailtrap.model.request.emails.Address;
+import io.mailtrap.model.request.emails.MailtrapMail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class MailUtil {
-
-    private final JavaMailSender javaMailSender;
-
     @Value("${app.sender.email}")
     private String senderEmail;
 
+    @Value("${app.mail.token}")
+    private String token;
+
     public void createPollMessage(User user, Poll createdPoll) {
+        final MailtrapConfig config = new MailtrapConfig.Builder()
+                .token(token)
+                .build();
+
+        final MailtrapClient client = MailtrapClientFactory.createMailtrapClient(config);
+
+        final MailtrapMail mail = MailtrapMail.builder()
+                .from(new Address(senderEmail, "Polling App"))
+                .to(List.of(new Address(user.getEmail())))
+                .subject("New Poll Posted")
+                .text("Dear " + user.getFirstName()
+                        + ".\nThis message is to inform you that your poll has been successfully posted.\n"
+                        + "The question you submitted is as follows: '"
+                        + createdPoll.getQuestion() + "'.\nThis poll was posted on "
+                        + createdPoll.getPostedDate() + ".\nYour poll is scheduled to expire on "
+                        + createdPoll.getExpiredAt() + ".\nThank you for your contribution to this project!")
+                .build();
+
         try {
-            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
-            mimeMessageHelper.setFrom(senderEmail);
-            mimeMessageHelper.setTo(user.getEmail());
-            mimeMessageHelper.setSubject("New Poll Posted");
-            mimeMessageHelper.setText("Dear " + user.getFirstName()
-                    + ".\nThis message is to inform you that your poll has been successfully posted.\n"
-                    + "The question you submitted is as follows: '"
-                    + createdPoll.getQuestion() + "'.\nThis poll was posted on "
-                    + createdPoll.getPostedDate() + ".\nYour poll is scheduled to expire on "
-                    + createdPoll.getExpiredAt() + ".\nThank you for your contribution to this project!");
-            javaMailSender.send(mimeMessage);
-        } catch (MessagingException e) {
-            System.out.println("Failed to send email: " + e.getMessage());
+            client.send(mail);
+        } catch (Exception e) {
+            System.out.println("Caught exception : " + e);
         }
     }
 
     public void resetPasswordMessage(User user, String newPassword) {
+        final MailtrapConfig config = new MailtrapConfig.Builder()
+                .token(token)
+                .build();
+
+        final MailtrapClient client = MailtrapClientFactory.createMailtrapClient(config);
+
+        final MailtrapMail mail = MailtrapMail.builder()
+                .from(new Address(senderEmail, "Polling App"))
+                .to(List.of(new Address(user.getEmail())))
+                .subject("Password Reset Request")
+                .text("Your new password: " + newPassword)
+                .build();
+
         try {
-            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
-            mimeMessageHelper.setFrom(senderEmail);
-            mimeMessageHelper.setTo(user.getEmail());
-            mimeMessageHelper.setSubject("Password Reset Request");
-            mimeMessageHelper.setText("Your new password: " + newPassword);
-            javaMailSender.send(mimeMessage);
-        } catch (MessagingException e) {
-            System.out.println("Failed to send email: " + e.getMessage());
+            client.send(mail);
+        } catch (Exception e) {
+            System.out.println("Caught exception : " + e);
         }
     }
 }
